@@ -1,0 +1,87 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: superset_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-superset}
+      POSTGRES_USER: ${POSTGRES_USER:-superset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - superset_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    container_name: superset_redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-changeme}"]
+    ports:
+      - "6379:6379"
+
+  # Mirrors the "superset-init" prestart task from the Nomad job:
+  # runs migrations, creates the admin user, then exits.
+  superset-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SUPERSET_VERSION: ${SUPERSET_VERSION:-4.1.1}
+    container_name: superset_init
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      POSTGRES_DB: ${POSTGRES_DB:-superset}
+      POSTGRES_USER: ${POSTGRES_USER:-superset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-changeme}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_FIRSTNAME: ${ADMIN_FIRSTNAME:-Admin}
+      ADMIN_LASTNAME: ${ADMIN_LASTNAME:-User}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+    volumes:
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+      - ./init.sh:/init.sh
+    command: ["/bin/bash", "/init.sh"]
+
+  # Mirrors the "superset" web task, running gunicorn the same way
+  # as the Nomad job args.
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SUPERSET_VERSION: ${SUPERSET_VERSION:-4.1.1}
+    container_name: superset_web
+    restart: unless-stopped
+    depends_on:
+      - superset-init
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      POSTGRES_DB: ${POSTGRES_DB:-superset}
+      POSTGRES_USER: ${POSTGRES_USER:-superset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-changeme}
+      SUPERSET_WEBSERVER_TIMEOUT: "300"
+      GUNICORN_TIMEOUT: "300"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+    command: >
+      gunicorn --bind 0.0.0.0:8088 --workers 2 --max-requests 1000
+      --max-requests-jitter 100 --timeout 300 --graceful-timeout 300
+      --keep-alive 10 --limit-request-line 0 --limit-request-field_size 0
+      --access-logfile - --error-logfile - "superset.app:create_app()"
+
+volumes:
+  superset_postgres_data:
