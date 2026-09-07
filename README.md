@@ -1,14 +1,7 @@
 # Superset Upgrade POC — Local Environment
 
 This is a local Docker Compose reproduction of the production Superset setup
-(currently running on Nomad, pinned to `apache/superset:4.1.1`). It's meant
-for an intern to test whether an upgrade from 4.1.1 to the latest stable
-release is safe, before we attempt it in production.
-
-Note: connection strings, secrets, hostnames, and the internal registry path
-from the real Nomad job have been replaced with placeholders / environment
-variables. Fill in your own **local, throwaway** values in `.env` — do not
-point this at production infrastructure or use real credentials.
+(currently running on Nomad, pinned to `apache/superset:4.1.1`).
 
 ## What's in here
 
