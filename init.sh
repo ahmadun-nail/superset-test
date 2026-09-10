@@ -9,7 +9,7 @@ superset fab create-admin \
   --firstname "${ADMIN_FIRSTNAME:-Admin}" \
   --lastname "${ADMIN_LASTNAME:-User}" \
   --email "${ADMIN_EMAIL:-admin@example.com}" \
-  --password "${ADMIN_PASSWORD:-changeme}" || true
+  --password "${ADMIN_PASSWORD:-changeme}"
 
 superset init
 

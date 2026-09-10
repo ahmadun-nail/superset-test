@@ -1,0 +1,23 @@
+FROM apache/superset:6.1.0-py311
+
+USER root
+
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    default-libmysqlclient-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN rm -rf /app/.venv/lib/python3.11/site-packages/typing_extensions* \
+    /app/.venv/lib/python3.11/site-packages/typing_extensions-*.dist-info && \
+    pip install --no-cache-dir \
+    --target=/app/.venv/lib/python3.11/site-packages \
+    psycopg2-binary \
+    redis \
+    clickhouse-connect \
+    mysqlclient \
+    flask-sqlalchemy==3.0.5 \
+    "fastmcp>=3.1.0,<4.0" \
+    "typing-extensions>=4.16.0"
+
+USER superset

@@ -15,10 +15,17 @@ RUN apt-get update && apt-get install -y \
         build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir \
-        psycopg2-binary \
-        redis \
-        clickhouse-connect \
-        mysqlclient
+    RUN rm -rf \
+    /app/.venv/lib/python3.10/site-packages/flask_sqlalchemy \
+    /app/.venv/lib/python3.10/site-packages/Flask_SQLAlchemy-*.dist-info \
+    /app/.venv/lib/python3.10/site-packages/flask_sqlalchemy-*.dist-info && \
+    pip install --no-cache-dir \
+    --target=/app/.venv/lib/python3.10/site-packages \
+    psycopg2-binary \
+    redis \
+    clickhouse-connect \
+    mysqlclient \
+    "apache-superset[fastmcp]" \
+    "flask-sqlalchemy==3.0.5"
 
 USER superset

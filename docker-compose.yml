@@ -12,6 +12,20 @@ services:
     ports:
       - "5432:5432"
 
+  mysql:
+    image: mysql:8.0
+    container_name: superset_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: testuser
+      MYSQL_PASSWORD: testpass
+      MYSQL_ROOT_PASSWORD: rootpass
+    volumes:
+      - superset_mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
   redis:
     image: redis:7
     container_name: superset_redis
@@ -27,7 +41,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SUPERSET_VERSION: ${SUPERSET_VERSION:-4.1.1}
+        SUPERSET_VERSION: ${SUPERSET_VERSION:-6.1.0}
     container_name: superset_init
     depends_on:
       - postgres
@@ -56,7 +70,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SUPERSET_VERSION: ${SUPERSET_VERSION:-4.1.1}
+        SUPERSET_VERSION: ${SUPERSET_VERSION:-6.1.0}
     container_name: superset_web
     restart: unless-stopped
     depends_on:
@@ -81,5 +95,32 @@ services:
       --keep-alive 10 --limit-request-line 0 --limit-request-field_size 0
       --access-logfile - --error-logfile - "superset.app:create_app()"
 
+  superset-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    container_name: superset_mcp
+    restart: unless-stopped
+    depends_on:
+      - superset
+    ports:
+      - "5008:5008"
+    environment:
+      SUPERSET_CONFIG_PATH: /app/pythonpath/superset_config.py
+      POSTGRES_DB: ${POSTGRES_DB:-superset}
+      POSTGRES_USER: ${POSTGRES_USER:-superset}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_HOST: postgres
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-changeme}
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:-changeme}
+      MCP_AUTH_ENABLED: "False"
+      MCP_DEV_USERNAME: ${MCP_DEV_USERNAME:-admin}
+      MCP_SERVICE_HOST: 0.0.0.0
+      MCP_SERVICE_PORT: 5008
+    volumes:
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+    command: >
+      superset mcp run --host 0.0.0.0 --port 5008
 volumes:
   superset_postgres_data:
+  superset_mysql_data:

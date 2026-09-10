@@ -5,8 +5,12 @@ import os
 # -----------------------------
 SECRET_KEY = os.environ.get("SUPERSET_SECRET_KEY", "changeme")
 
-TALISMAN_ENABLED = True
+TALISMAN_ENABLED = False
+
 TALISMAN_CONFIG = {
+    "force_https": False,
+    "force_https_permanent": False,
+    "session_cookie_secure": False,
     "content_security_policy": {
         "default-src": ["'self'"],
         "img-src": ["'self'", "data:", "blob:"],
@@ -63,3 +67,9 @@ ROW_LIMIT = 5000
 # Gunicorn
 # -----------------------------
 GUNICORN_TIMEOUT = 60
+
+# MCP development configuration
+MCP_AUTH_ENABLED = False
+MCP_DEV_USERNAME = "admin"
+MCP_SERVICE_HOST = "0.0.0.0"
+MCP_SERVICE_PORT = 5008
