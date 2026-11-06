@@ -1,0 +1,83 @@
+name: vault-lab
+
+services:
+  postgres:
+    image: postgres:16.10-alpine
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: lab-only-postgres-superuser
+      VAULT_DB_PASSWORD: lab-only-vault-db-admin
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/10-vault-lab.sql:ro
+    networks:
+      - lab
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  vault:
+    image: hashicorp/vault:1.19.5
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-dev-root-token-id=lab-only-root-token"]
+    environment:
+      VAULT_ADDR: http://127.0.0.1:8200
+      VAULT_DEV_ROOT_TOKEN_ID: lab-only-root-token
+    ports:
+      - "127.0.0.1:8200:8200"
+    networks:
+      - lab
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 2s
+
+  nomad:
+    image: hashicorp/nomad:1.10.5
+    command:
+      - agent
+      - -bind=0.0.0.0
+      - -data-dir=${NOMAD_DATA_DIR:-/tmp/vault-lab-nomad-data}
+      - -config=/etc/nomad.d/nomad.hcl
+    privileged: true
+    cgroup: host
+    ports:
+      - "127.0.0.1:4646:4646"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - type: bind
+        source: ${NOMAD_DATA_DIR:-/tmp/vault-lab-nomad-data}
+        target: ${NOMAD_DATA_DIR:-/tmp/vault-lab-nomad-data}
+        bind:
+          propagation: rshared
+      - ./nomad.hcl:/etc/nomad.d/nomad.hcl:ro
+      - ./postgres-demo.nomad.hcl:/etc/nomad.d/postgres-demo.nomad.hcl:ro
+    networks:
+      - lab
+    healthcheck:
+      test: ["CMD", "nomad", "server", "members", "-address=http://127.0.0.1:4646"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
+  demo-service:
+    image: vault-lab/demo-service:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["build-only"]
+    networks:
+      - lab
+
+networks:
+  lab:
+    name: vault-lab
+
+volumes:
+  postgres_data:

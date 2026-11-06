@@ -50,3 +50,10 @@ docker compose up --build
 
 See `jira-tickets.md` for the full breakdown of tasks, in the order they're
 meant to be worked.
+
+## Separate Vault/PostgreSQL credentials lab
+
+The isolated Vault + Nomad workload-identity + dynamic PostgreSQL credential
+lab and service migration runbook live in
+[vault-lab/README.md](vault-lab/README.md). It is a separate, disposable Compose
+project and does not change this Superset POC's database configuration.
